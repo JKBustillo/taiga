@@ -822,30 +822,28 @@ void MainDialog::UpdateStatusTimer() {
 
   auto anime_item = anime::db.Find(CurrentEpisode.anime_id);
 
-  if (anime_item && IsUpdateAllowed(*anime_item, CurrentEpisode, true)) {
-    auto timer = taiga::timers.timer(taiga::kTimerMedia);
-    int seconds = timer ? timer->ticks() : 0;
-    bool waiting_for_media_player = seconds == 0 &&
-        taiga::settings.GetSyncUpdateWaitPlayer();
-
-    std::wstring str = L"List update in " + ToTimeString(seconds);
-    if (waiting_for_media_player)
-      str += L" (waiting for media player to close)";
+  if (anime_item && IsUpdateAllowed(*anime_item, CurrentEpisode, true) &&
+      track::media_players.mpc_data_received()) {
+    const int pct = static_cast<int>(
+        track::media_players.playback_progress() * 100.0f);
+    const auto threshold = taiga::settings.GetSyncUpdateProgressThreshold();
+    std::wstring str = L"Watched: " + ToWstr(pct) + L"% / " +
+                       ToWstr(threshold) + L"%";
 
     statusbar.SetPartText(1, str.c_str());
     statusbar.SetPartTipText(1, str.c_str());
-    statusbar.SetPartTipText(2, L"Cancel update");
+    statusbar.SetPartTipText(2, L"");
 
     const int icon_width = ScaleX(16);
     win::Dc hdc = statusbar.GetDC();
     hdc.AttachFont(statusbar.GetFont());
-    const int timer_width = ScaleX(5) + icon_width + ScaleX(5) + GetTextWidth(hdc.Get(), str) + ScaleX(4);
+    const int part_width = ScaleX(5) + icon_width + ScaleX(5) +
+                           GetTextWidth(hdc.Get(), str) + ScaleX(4);
     hdc.DetachFont();
-    const int cancel_width = ScaleX(5) + icon_width + ScaleX(16);
 
-    statusbar.SetPartWidth(0, rect.Width() - timer_width - cancel_width);
-    statusbar.SetPartWidth(1, timer_width);
-    statusbar.SetPartWidth(2, cancel_width);
+    statusbar.SetPartWidth(0, rect.Width() - part_width);
+    statusbar.SetPartWidth(1, part_width);
+    statusbar.SetPartWidth(2, 0);
 
   } else {
     statusbar.SetPartWidth(0, rect.Width());

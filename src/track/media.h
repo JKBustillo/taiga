@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
@@ -53,16 +54,26 @@ public:
   bool CheckRunningPlayers();
   MediaPlayer* GetRunningPlayer();
 
+  float playback_progress() const;
+  bool mpc_data_received() const;
+  void ResetPlaybackProgress();
+
 public:
   std::vector<MediaPlayer> items;
   PlayStatus play_status = PlayStatus::Stopped;
 
 private:
+  void QueryMpcProgress();
+
   std::unique_ptr<anisthesia::win::Result> current_result_;
   std::wstring current_title_;
   std::wstring current_page_title_;
   bool player_running_ = false;
   bool title_changed_ = false;
+
+  std::atomic<float> playback_progress_{0.0f};
+  std::atomic<bool> mpc_data_received_{false};
+  std::atomic<bool> mpc_progress_pending_{false};
 };
 
 }  // namespace recognition

@@ -156,6 +156,7 @@ void Settings::InitKeyMap() const {
       {AppSettingKey::SyncUpdateOutOfRange, {"account/update/outofrange", false}},
       {AppSettingKey::SyncUpdateOutOfRoot, {"account/update/outofroot", false}},
       {AppSettingKey::SyncUpdateWaitPlayer, {"account/update/waitplayer", false}},
+      {AppSettingKey::SyncUpdateProgressThreshold, {"account/update/progressthreshold", 85}},
       {AppSettingKey::SyncGoToNowPlayingRecognized, {"account/update/gotonowplaying", true}},
       {AppSettingKey::SyncGoToNowPlayingNotRecognized, {"account/update/gotonowplayingnot", false}},
       {AppSettingKey::SyncNotifyRecognized, {"program/notifications/balloon/recognized", true}},
@@ -803,6 +804,14 @@ bool Settings::GetSyncUpdateWaitPlayer() const {
 
 void Settings::SetSyncUpdateWaitPlayer(const bool enabled) {
   set_value(AppSettingKey::SyncUpdateWaitPlayer, enabled);
+}
+
+int Settings::GetSyncUpdateProgressThreshold() const {
+  return value<int>(AppSettingKey::SyncUpdateProgressThreshold);
+}
+
+void Settings::SetSyncUpdateProgressThreshold(const int percent) {
+  set_value(AppSettingKey::SyncUpdateProgressThreshold, percent);
 }
 
 bool Settings::GetSyncGoToNowPlayingRecognized() const {

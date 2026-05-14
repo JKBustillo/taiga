@@ -29,6 +29,7 @@
 #include "media/anime.h"
 #include "media/anime_db.h"
 #include "media/anime_util.h"
+#include "taiga/http.h"
 #include "taiga/path.h"
 #include "taiga/settings.h"
 #include "taiga/timer.h"
@@ -321,8 +322,11 @@ bool MediaPlayers::CheckRunningPlayers() {
         if (current_title_ != title) {
           current_title_ = title;
           set_title_changed(true);
+          ResetPlaybackProgress();
         }
         player_running_ = true;
+
+        QueryMpcProgress();
 
         return true;
       }
@@ -330,6 +334,7 @@ bool MediaPlayers::CheckRunningPlayers() {
   }
 
   current_result_.reset();
+  ResetPlaybackProgress();
   return false;
 }
 
@@ -340,6 +345,72 @@ MediaPlayer* MediaPlayers::GetRunningPlayer() {
         return &item;
 
   return nullptr;
+}
+
+float MediaPlayers::playback_progress() const {
+  return playback_progress_.load();
+}
+
+bool MediaPlayers::mpc_data_received() const {
+  return mpc_data_received_.load();
+}
+
+void MediaPlayers::ResetPlaybackProgress() {
+  playback_progress_.store(0.0f);
+  mpc_data_received_.store(false);
+  mpc_progress_pending_.store(false);
+}
+
+void MediaPlayers::QueryMpcProgress() {
+  if (mpc_progress_pending_.load())
+    return;
+
+  const auto player_name = current_player_name();
+  if (player_name.find("MPC") == std::string::npos)
+    return;
+
+  mpc_progress_pending_.store(true);
+  LOGW(L"QueryMpcProgress: sending request for player={}", StrToWstr(player_name));
+
+  taiga::http::Request request;
+  request.set_method("GET");
+  request.set_target("http://localhost:13579/variables.html");
+
+  taiga::http::Send(request, nullptr,
+      [this](const taiga::http::Response& response) {
+        mpc_progress_pending_.store(false);
+
+        if (response.error()) {
+          LOGE(L"QueryMpcProgress: HTTP error - is MPC-HC web interface enabled on port 13579?");
+          return;
+        }
+
+        const auto& body = response.body();
+
+        const auto extract_ms = [&](const std::string& id) -> long long {
+          const auto tag = "<p id=\"" + id + "\">";
+          const auto pos = body.find(tag);
+          if (pos == std::string::npos) return 0;
+          const auto start = pos + tag.size();
+          const auto end = body.find("</p>", start);
+          if (end == std::string::npos) return 0;
+          try { return std::stoll(body.substr(start, end - start)); }
+          catch (...) { return 0; }
+        };
+
+        const auto position = extract_ms("position");
+        const auto duration = extract_ms("duration");
+
+        if (duration > 0) {
+          const auto progress = static_cast<float>(position) / static_cast<float>(duration);
+          LOGW(L"QueryMpcProgress: {}% ({}/{}ms)",
+               static_cast<int>(progress * 100.0f), position, duration);
+          playback_progress_.store(progress);
+          mpc_data_received_.store(true);
+        } else {
+          LOGE(L"QueryMpcProgress: response received but could not parse position/duration");
+        }
+      });
 }
 
 }  // namespace recognition
@@ -428,6 +499,9 @@ void ProcessMediaPlayerTitle(const recognition::MediaPlayer& media_player) {
         ui::DlgNowPlaying.SetCurrentId(anime::ID_UNKNOWN);
       }
       taiga::timers.timer(taiga::kTimerMedia)->Reset();
+    } else if (anime_item) {
+      // Check progress-based update for MPC-HC
+      anime::UpdateList(*anime_item, CurrentEpisode);
     }
   }
 }

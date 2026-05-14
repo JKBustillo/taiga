@@ -192,6 +192,8 @@ public:
   void SetSyncUpdateOutOfRoot(const bool enabled);
   bool GetSyncUpdateWaitPlayer() const;
   void SetSyncUpdateWaitPlayer(const bool enabled);
+  int GetSyncUpdateProgressThreshold() const;
+  void SetSyncUpdateProgressThreshold(const int percent);
   bool GetSyncGoToNowPlayingRecognized() const;
   void SetSyncGoToNowPlayingRecognized(const bool enabled);
   bool GetSyncGoToNowPlayingNotRecognized() const;

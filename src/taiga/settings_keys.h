@@ -85,6 +85,7 @@ enum class AppSettingKey {
   SyncUpdateOutOfRange,
   SyncUpdateOutOfRoot,
   SyncUpdateWaitPlayer,
+  SyncUpdateProgressThreshold,
   SyncGoToNowPlayingRecognized,
   SyncGoToNowPlayingNotRecognized,
   SyncNotifyRecognized,

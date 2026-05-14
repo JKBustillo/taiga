@@ -300,10 +300,19 @@ bool IsUpdateAllowed(const Item& item, const Episode& episode, bool ignore_updat
     return false;
 
   if (!ignore_update_time) {
-    const auto delay = taiga::settings.GetSyncUpdateDelay();
-    const auto ticks = taiga::timers.timer(taiga::kTimerMedia)->ticks();
-    if (delay > 0 && ticks > 0)
-      return false;
+    const auto threshold = taiga::settings.GetSyncUpdateProgressThreshold();
+    if (threshold > 0) {
+      // Progress-only mode: require MPC-HC data and threshold reached
+      if (!track::media_players.mpc_data_received() ||
+          track::media_players.playback_progress() * 100.0f < static_cast<float>(threshold))
+        return false;
+    } else {
+      // threshold=0: disabled, fall back to original time-based gate
+      const auto delay = taiga::settings.GetSyncUpdateDelay();
+      const auto ticks = taiga::timers.timer(taiga::kTimerMedia)->ticks();
+      if (delay > 0 && ticks > 0)
+        return false;
+    }
   }
 
   if (item.GetMyStatus() == MyStatus::Completed && !item.GetMyRewatching())
