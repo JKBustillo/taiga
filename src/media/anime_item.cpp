@@ -447,7 +447,14 @@ void Item::SetMyId(const std::wstring& id) {
 void Item::SetMyLastWatchedEpisode(int number) {
   assert(my_info_.get());
 
-  my_info_->watched_episodes = std::clamp(number, 0, kMaxEpisodeCount);
+  number = std::clamp(number, 0, kMaxEpisodeCount);
+
+  // The cached path points at the old "next" episode, e.g. after progress
+  // changes on the service and is pulled in by a list download.
+  if (my_info_->watched_episodes != number)
+    local_info_.next_episode_path.clear();
+
+  my_info_->watched_episodes = number;
 }
 
 void Item::SetMyScore(int score) {
